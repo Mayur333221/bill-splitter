@@ -1,21 +1,11 @@
-# Uncomment this line to define a global platform for your project
 platform :ios, '13.0'
 
-# CocoaPods analytics disables by default for CI builds like CodeMagic
-ENV['COCOAPODS_DISABLE_STATS'] = 'true'
-
-# Standard Flutter Pod setup
-require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper'), __dir__)
-
-flutter_ios_podfile_setup
+flutter_application_path = File.expand_path('..', __dir__)
+load File.join(flutter_application_path, '.flutter-plugins-dependencies')
 
 target 'Runner' do
   use_frameworks!
   use_modular_headers!
 
-  flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
-
-  target 'RunnerTests' do
-    inherit! :search_paths
-  end
+  install_all_flutter_pods(flutter_application_path)
 end
