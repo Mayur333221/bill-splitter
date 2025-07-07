@@ -1,8 +1,9 @@
+import 'dart:html' as html;
 import 'dart:typed_data';
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
+import 'package:http/http.dart' as http;
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 
 class OCRScreen extends StatefulWidget {
   final String groupName;
@@ -17,53 +18,58 @@ class OCRScreen extends StatefulWidget {
 class _OCRScreenState extends State<OCRScreen> {
   Uint8List? _imageBytes;
   List<Map<String, dynamic>> extractedItems = [];
+  String? ocrApiKey = "K84210639088957"; // Replace with your real key
 
-  Future<void> _pickImage(ImageSource source) async {
-    final picker = ImagePicker();
-    final picked = await picker.pickImage(source: source);
-    if (picked != null) {
-      final bytes = await picked.readAsBytes();
+  Future<void> _pickImage() async {
+    final input = html.FileUploadInputElement()..accept = 'image/*';
+    input.click();
+
+    input.onChange.listen((event) async {
+      final reader = html.FileReader();
+      final file = input.files!.first;
+
+      reader.readAsArrayBuffer(file);
+      await reader.onLoad.first;
+
+      final data = reader.result as Uint8List;
       setState(() {
-        _imageBytes = bytes;
+        _imageBytes = data;
         extractedItems = [];
       });
-      await _runOCR(bytes);
-    }
+
+      await _runOCR(data);
+    });
   }
 
-  Future<void> _runOCR(Uint8List bytes) async {
-    final inputImage = InputImage.fromBytes(
-      bytes: bytes,
-      metadata: InputImageMetadata(
-        size: const Size(1000, 1000), // Replace with actual if known
-        rotation: InputImageRotation.rotation0deg,
-        format: InputImageFormat.bgra8888,
-        bytesPerRow: 1000,
-      ),
-    );
+  Future<void> _runOCR(Uint8List imageBytes) async {
+    final uri = Uri.parse("https://api.ocr.space/parse/image");
+    final request = http.MultipartRequest('POST', uri)
+      ..headers['apikey'] = ocrApiKey!
+      ..files.add(http.MultipartFile.fromBytes('file', imageBytes, filename: 'bill.jpg'))
+      ..fields['language'] = 'eng';
 
-    final recognizer = TextRecognizer(script: TextRecognitionScript.latin);
-    final result = await recognizer.processImage(inputImage);
-    recognizer.close();
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+
+    final json = jsonDecode(response.body);
+    final text = json['ParsedResults']?[0]?['ParsedText'] ?? "";
 
     final items = <Map<String, dynamic>>[];
+    final lines = text.split('\n');
 
-    for (final block in result.blocks) {
-      for (final line in block.lines) {
-        final text = line.text;
-        final match = RegExp(r'(.+?)\s+(\d+(\.\d{1,2})?)$').firstMatch(text);
-        if (match != null) {
-          final name = match.group(1)!.trim();
-          final amount = double.tryParse(match.group(2)!) ?? 0;
-          items.add({
-            "name": name,
-            "amount": amount,
-            "split": {
-              for (var m in widget.members)
-                m: double.parse((amount / widget.members.length).toStringAsFixed(2))
-            }
-          });
-        }
+    for (final line in lines) {
+      final match = RegExp(r'(.+?)\s+(\d+(\.\d{1,2})?)$').firstMatch(line);
+      if (match != null) {
+        final name = match.group(1)!.trim();
+        final amount = double.tryParse(match.group(2)!) ?? 0;
+        items.add({
+          "name": name,
+          "amount": amount,
+          "split": {
+            for (var m in widget.members)
+              m: double.parse((amount / widget.members.length).toStringAsFixed(2))
+          }
+        });
       }
     }
 
@@ -81,32 +87,21 @@ class _OCRScreenState extends State<OCRScreen> {
     await showDialog(
       context: context,
       builder: (_) => StatefulBuilder(
-        builder: (context, setModalState) => AlertDialog(
+        builder: (context, setStateDialog) => AlertDialog(
           title: const Text("Edit Item"),
           content: SingleChildScrollView(
             child: Column(
               children: [
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(labelText: "Item Name"),
-                ),
-                TextField(
-                  controller: amountController,
-                  decoration: const InputDecoration(labelText: "Amount"),
-                  keyboardType: TextInputType.number,
-                ),
+                TextField(controller: nameController, decoration: const InputDecoration(labelText: "Item Name")),
+                TextField(controller: amountController, decoration: const InputDecoration(labelText: "Amount"), keyboardType: TextInputType.number),
                 const Divider(),
                 const Text("Split Between:"),
                 ...widget.members.map((m) => CheckboxListTile(
                       title: Text(m),
                       value: selected.contains(m),
                       onChanged: (val) {
-                        setModalState(() {
-                          if (val == true) {
-                            selected.add(m);
-                          } else {
-                            selected.remove(m);
-                          }
+                        setStateDialog(() {
+                          val == true ? selected.add(m) : selected.remove(m);
                         });
                       },
                     )),
@@ -114,28 +109,17 @@ class _OCRScreenState extends State<OCRScreen> {
             ),
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Cancel"),
-            ),
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
             ElevatedButton(
               onPressed: () {
                 final name = nameController.text.trim();
                 final amount = double.tryParse(amountController.text.trim()) ?? 0;
                 if (name.isNotEmpty && amount > 0 && selected.isNotEmpty) {
                   final per = amount / selected.length;
-                  final split = {
-                    for (var m in selected) m: double.parse(per.toStringAsFixed(2))
-                  };
-
+                  final split = {for (var m in selected) m: double.parse(per.toStringAsFixed(2))};
                   setState(() {
-                    extractedItems[index] = {
-                      "name": name,
-                      "amount": amount,
-                      "split": split,
-                    };
+                    extractedItems[index] = {"name": name, "amount": amount, "split": split};
                   });
-
                   Navigator.pop(context);
                 }
               },
@@ -170,20 +154,10 @@ class _OCRScreenState extends State<OCRScreen> {
       appBar: AppBar(title: const Text("Scan & Extract Bill")),
       body: Column(
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              ElevatedButton.icon(
-                icon: const Icon(Icons.camera_alt),
-                label: const Text("Camera"),
-                onPressed: () => _pickImage(ImageSource.camera),
-              ),
-              ElevatedButton.icon(
-                icon: const Icon(Icons.photo),
-                label: const Text("Gallery"),
-                onPressed: () => _pickImage(ImageSource.gallery),
-              ),
-            ],
+          ElevatedButton.icon(
+            icon: const Icon(Icons.image),
+            label: const Text("Upload Image"),
+            onPressed: _pickImage,
           ),
           if (_imageBytes != null)
             Padding(
