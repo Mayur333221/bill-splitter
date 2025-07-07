@@ -12,5 +12,6 @@ class DefaultFirebaseOptions {
     storageBucket: "bill-splitter-d1e6f.firebasestorage.app",
     messagingSenderId: "594194925592",
     appId: "1:594194925592:web:2a24c4c2e667b3aa08db6d",
+    measurementId: "G-SYDJE41B1H"
   );
 }
