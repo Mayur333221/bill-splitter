@@ -53,7 +53,7 @@ class _OCRScreenState extends State<OCRScreen> {
 
     final json = jsonDecode(response.body);
     final text = json['ParsedResults']?[0]?['ParsedText'] ?? "";
-
+   
     final items = <Map<String, dynamic>>[];
     final lines = text.split('\n');
 

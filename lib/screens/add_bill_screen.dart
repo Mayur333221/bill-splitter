@@ -4,11 +4,15 @@ import 'package:flutter/material.dart';
 class AddBillScreen extends StatefulWidget {
   final String groupName;
   final List<String> members;
+  final Map<String, dynamic>? bill;
+  final String? billId;
 
   const AddBillScreen({
     super.key,
     required this.groupName,
     required this.members,
+    this.bill,
+    this.billId,
   });
 
   @override
@@ -16,29 +20,42 @@ class AddBillScreen extends StatefulWidget {
 }
 
 class _AddBillScreenState extends State<AddBillScreen> {
-  final billTitleController = TextEditingController();
-  List<Map<String, dynamic>> items = [];
+  late TextEditingController billTitleController;
+  late List<Map<String, dynamic>> items;
   String? selectedPayer;
+
+  bool get isEditing => widget.bill != null && widget.billId != null;
 
   @override
   void initState() {
     super.initState();
-    if (widget.members.isNotEmpty) {
-      selectedPayer = widget.members[0]; // Default to first member
-    }
+    billTitleController =
+        TextEditingController(text: widget.bill?['title'] ?? '');
+    items = (widget.bill?['items'] as List<dynamic>?)
+            ?.map((e) => Map<String, dynamic>.from(e as Map))
+            .toList() ??
+        [];
+    selectedPayer = widget.bill?['paidBy'] ??
+        (widget.members.isNotEmpty ? widget.members[0] : null);
   }
 
-  void _addItemDialog() {
-    final nameController = TextEditingController();
-    final amountController = TextEditingController();
-    final selected = <String>{...widget.members};
+  void _addItemDialog({Map<String, dynamic>? item, int? editIndex}) {
+    final nameController =
+        TextEditingController(text: item != null ? item['name'] : '');
+    final amountController =
+        TextEditingController(text: item != null ? item['amount'].toString() : '');
+    final selected = <String>{
+      ...(item != null
+          ? (item['split'] as Map).keys
+          : widget.members)
+    };
 
     showDialog(
       context: context,
       builder: (_) {
         return StatefulBuilder(
           builder: (context, setModalState) => AlertDialog(
-            title: const Text("Add Item"),
+            title: Text(item == null ? "Add Item" : "Edit Item"),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -96,7 +113,7 @@ class _AddBillScreenState extends State<AddBillScreen> {
                     Navigator.pop(context, newItem);
                   }
                 },
-                child: const Text("Add"),
+                child: Text(item == null ? "Add" : "Save"),
               )
             ],
           ),
@@ -105,7 +122,11 @@ class _AddBillScreenState extends State<AddBillScreen> {
     ).then((newItem) {
       if (newItem != null) {
         setState(() {
-          items.add(newItem);
+          if (editIndex != null) {
+            items[editIndex] = newItem;
+          } else {
+            items.add(newItem);
+          }
         });
       }
     });
@@ -127,7 +148,13 @@ class _AddBillScreenState extends State<AddBillScreen> {
         .doc(widget.groupName)
         .collection('bills');
 
-    await billsCollection.add(bill);
+    if (isEditing) {
+      // Update existing bill
+      await billsCollection.doc(widget.billId).update(bill);
+    } else {
+      // Add new bill
+      await billsCollection.add(bill);
+    }
 
     if (!mounted) return;
     Navigator.pop(context);
@@ -136,7 +163,7 @@ class _AddBillScreenState extends State<AddBillScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("New Bill")),
+      appBar: AppBar(title: Text(isEditing ? "Edit Bill" : "New Bill")),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -163,7 +190,7 @@ class _AddBillScreenState extends State<AddBillScreen> {
             ),
             const SizedBox(height: 16),
             ElevatedButton.icon(
-              onPressed: _addItemDialog,
+              onPressed: () => _addItemDialog(),
               icon: const Icon(Icons.add),
               label: const Text("Add Item"),
             ),
@@ -171,18 +198,40 @@ class _AddBillScreenState extends State<AddBillScreen> {
             Expanded(
               child: items.isEmpty
                   ? const Center(child: Text("No items added yet"))
-                  : ListView(
-                      children: items
-                          .map((item) => ListTile(
-                                title: Text(item['name']),
-                                subtitle: Text("₹${item['amount']}"),
-                              ))
-                          .toList(),
+                  : ListView.builder(
+                      itemCount: items.length,
+                      itemBuilder: (context, index) {
+                        final item = items[index];
+                        return ListTile(
+                          title: Text(item['name']),
+                          subtitle: Text("₹${item['amount']}"),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: Icon(Icons.edit, color: Colors.blue),
+                                onPressed: () => _addItemDialog(
+                                  item: item,
+                                  editIndex: index,
+                                ),
+                              ),
+                              IconButton(
+                                icon: Icon(Icons.delete, color: Colors.red),
+                                onPressed: () {
+                                  setState(() {
+                                    items.removeAt(index);
+                                  });
+                                },
+                              ),
+                            ],
+                          ),
+                        );
+                      },
                     ),
             ),
             ElevatedButton(
               onPressed: _saveBill,
-              child: const Text("Save Bill"),
+              child: Text(isEditing ? "Save Changes" : "Save Bill"),
             )
           ],
         ),

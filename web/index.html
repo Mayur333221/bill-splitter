@@ -32,6 +32,18 @@
   <title>bill_splitter_app</title>
   <link rel="manifest" href="manifest.json">
   <script>
+  // You can change this password to whatever you want!
+  const SECRET = "smithamayabapu";
+  function passwordPrompt() {
+    let p = prompt("Enter password to access the portal:");
+    if (p !== SECRET) {
+      alert("Wrong password!");
+      window.location.reload();
+    }
+  }
+  passwordPrompt();
+</script>
+  <script>
     // The value below is injected by flutter build, do not touch.
     var serviceWorkerVersion = null;
   </script>

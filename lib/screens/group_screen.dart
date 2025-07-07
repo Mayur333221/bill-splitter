@@ -42,10 +42,51 @@ class _GroupScreenState extends State<GroupScreen> {
         .get();
 
     setState(() {
-      bills = snapshot.docs.map((doc) => doc.data()).toList();
+      bills = snapshot.docs
+          .map((doc) => {
+                ...doc.data(),
+                'id': doc.id, // store doc id for editing
+              })
+          .toList();
     });
 
     _calculateBalances();
+  }
+
+  Future<void> _deleteBill(String billId, String? title) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Bill?'),
+        content: Text('Are you sure you want to delete the bill "${title ?? ''}"? This cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await FirebaseFirestore.instance
+          .collection('groups')
+          .doc(widget.groupName)
+          .collection('bills')
+          .doc(billId)
+          .delete();
+
+      await _loadBills();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Bill "${title ?? ''}" deleted.')),
+      );
+    }
   }
 
   Future<void> _calculateBalances() async {
@@ -171,12 +212,51 @@ class _GroupScreenState extends State<GroupScreen> {
 
   Future<void> _deleteMember(int index) async {
     final memberName = members[index];
-    await MemberService.deleteMember(widget.groupName, memberName);
-    await _loadMembers();
+    final balance = balances[memberName] ?? 0;
+
+    if (balance.abs() < 0.01) {
+      await MemberService.deleteMember(widget.groupName, memberName);
+      await _loadMembers();
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Member "$memberName" deleted.')));
+    } else {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('Cannot Delete'),
+          content: Text(
+              '$memberName cannot be deleted because their balance is not settled.\n\n'
+              'Current balance: ₹${balance.toStringAsFixed(2)}'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('OK'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  Future<void> _openAddBillScreen({Map<String, dynamic>? bill, String? billId}) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AddBillScreen(
+          groupName: widget.groupName,
+          members: members,
+          bill: bill,
+          billId: billId,
+        ),
+      ),
+    );
+    await _loadBills();
   }
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 600;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.groupName),
@@ -187,18 +267,7 @@ class _GroupScreenState extends State<GroupScreen> {
             tooltip: "Add Bill",
             onPressed: members.isEmpty
                 ? null
-                : () async {
-                    await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => AddBillScreen(
-                          groupName: widget.groupName,
-                          members: members,
-                        ),
-                      ),
-                    );
-                    await _loadBills();
-                  },
+                : () => _openAddBillScreen(),
           ),
         ],
       ),
@@ -222,7 +291,8 @@ class _GroupScreenState extends State<GroupScreen> {
                   ),
           ),
           const Divider(),
-          const Text("Bills", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const Text("Bills",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           Expanded(
             flex: 2,
             child: bills.isEmpty
@@ -238,13 +308,33 @@ class _GroupScreenState extends State<GroupScreen> {
                       return ListTile(
                         title: Text(bill['title'] ?? 'Untitled'),
                         subtitle: Text("₹${total.toStringAsFixed(2)}"),
-                        trailing: const Icon(Icons.receipt_long),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.edit, color: Colors.blue),
+                              onPressed: () => _openAddBillScreen(
+                                bill: bill,
+                                billId: bill['id'],
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete, color: Colors.red),
+                              onPressed: () => _deleteBill(
+                                bill['id'],
+                                bill['title'] ?? 'Untitled',
+                              ),
+                            ),
+                            const Icon(Icons.receipt_long),
+                          ],
+                        ),
                       );
                     },
                   ),
           ),
           const Divider(),
-          const Text("Balances", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const Text("Balances",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           Expanded(
             flex: 1,
             child: balances.isEmpty
@@ -265,7 +355,8 @@ class _GroupScreenState extends State<GroupScreen> {
                   ),
           ),
           const Divider(),
-          const Text("Who Owes Whom", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const Text("Who Owes Whom",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           Expanded(
             flex: 1,
             child: ListView(
@@ -274,71 +365,139 @@ class _GroupScreenState extends State<GroupScreen> {
                   .toList(),
             ),
           ),
+          SizedBox(height: isMobile ? 72 : 0),
         ],
       ),
-      floatingActionButton: Column(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          FloatingActionButton.extended(
-            heroTag: 'view-settlements',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) =>
-                      ViewSettlementsScreen(groupName: widget.groupName),
-                ),
-              );
-            },
-            icon: const Icon(Icons.history),
-            label: const Text("View Settlements"),
-          ),
-          const SizedBox(height: 12),
-          FloatingActionButton.extended(
-            heroTag: 'settle',
-            onPressed: () async {
-              final result = await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => SettleUpScreen(
-                    groupName: widget.groupName,
-                    members: members,
+      floatingActionButton: isMobile
+          ? Padding(
+              padding: const EdgeInsets.only(bottom: 8.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  FloatingActionButton(
+                    heroTag: 'add-member',
+                    onPressed: _addMemberDialog,
+                    tooltip: 'Add Member',
+                    child: const Icon(Icons.person_add),
                   ),
-                ),
-              );
-              if (result == true) {
-                await _loadBills();
-              }
-            },
-            icon: const Icon(Icons.compare_arrows),
-            label: const Text("Settle Up"),
-          ),
-          const SizedBox(height: 12),
-          FloatingActionButton(
-            heroTag: 'add-member',
-            onPressed: _addMemberDialog,
-            tooltip: 'Add Member',
-            child: const Icon(Icons.person_add),
-          ),
-          const SizedBox(height: 12),
-          FloatingActionButton.extended(
-            heroTag: 'ocr',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => OCRScreen(
-                    groupName: widget.groupName,
-                    members: members,
+                  FloatingActionButton(
+                    heroTag: 'settle',
+                    onPressed: () async {
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => SettleUpScreen(
+                            groupName: widget.groupName,
+                            members: members,
+                            balances: balances,
+                          ),
+                        ),
+                      );
+                      if (result == true) {
+                        await _loadBills();
+                      }
+                    },
+                    tooltip: 'Settle Up',
+                    child: const Icon(Icons.compare_arrows),
                   ),
+                  FloatingActionButton(
+                    heroTag: 'view-settlements',
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ViewSettlementsScreen(
+                              groupName: widget.groupName),
+                        ),
+                      );
+                    },
+                    tooltip: 'View Settlements',
+                    child: const Icon(Icons.history),
+                  ),
+                  FloatingActionButton(
+                    heroTag: 'ocr',
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => OCRScreen(
+                            groupName: widget.groupName,
+                            members: members,
+                          ),
+                        ),
+                      );
+                    },
+                    tooltip: 'Scan Bill',
+                    child: const Icon(Icons.camera),
+                  ),
+                ],
+              ),
+            )
+          : Column(
+              mainAxisAlignment: MainAxisAlignment.end,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                FloatingActionButton.extended(
+                  heroTag: 'view-settlements',
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            ViewSettlementsScreen(groupName: widget.groupName),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.history),
+                  label: const Text("View Settlements"),
                 ),
-              );
-            },
-            icon: const Icon(Icons.camera),
-            label: const Text("Scan Bill"),
-          ),
-        ],
-      ),
+                const SizedBox(height: 12),
+                FloatingActionButton.extended(
+                  heroTag: 'settle',
+                  onPressed: () async {
+                    final result = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => SettleUpScreen(
+                          groupName: widget.groupName,
+                          members: members,
+                          balances: balances, 
+                        ),
+                      ),
+                    );
+                    if (result == true) {
+                      await _loadBills();
+                    }
+                  },
+                  icon: const Icon(Icons.compare_arrows),
+                  label: const Text("Settle Up"),
+                ),
+                const SizedBox(height: 12),
+                FloatingActionButton(
+                  heroTag: 'add-member',
+                  onPressed: _addMemberDialog,
+                  tooltip: 'Add Member',
+                  child: const Icon(Icons.person_add),
+                ),
+                const SizedBox(height: 12),
+                FloatingActionButton.extended(
+                  heroTag: 'ocr',
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => OCRScreen(
+                          groupName: widget.groupName,
+                          members: members,
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.camera),
+                  label: const Text("Scan Bill"),
+                ),
+              ],
+            ),
     );
   }
 }
