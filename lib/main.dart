@@ -1,14 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:hive_flutter/adapters.dart';
-import 'screens/home_screen.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
+
+import 'screens/home_screen.dart';
 import 'state/app_state.dart';
 
-void main() async{
-   WidgetsFlutterBinding.ensureInitialized();
-  await Hive.initFlutter();
- await Hive.openBox<String>('groups');
-   runApp(
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Firebase
+  await Firebase.initializeApp();
+
+  // // Initialize Hive (only needed if you're still using local cache anywhere)
+  // await Hive.initFlutter();
+
+  runApp(
     ChangeNotifierProvider(
       create: (_) => AppState(),
       child: const BillSplitterApp(),
@@ -23,7 +29,11 @@ class BillSplitterApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Bill Splitter',
-      theme: ThemeData(primarySwatch: Colors.blue),
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        primarySwatch: Colors.deepPurple,
+        visualDensity: VisualDensity.adaptivePlatformDensity,
+      ),
       home: const HomeScreen(),
     );
   }

@@ -1,7 +1,7 @@
 import 'package:bill_splitter_app/screens/settle_up_screen.dart';
 import 'package:bill_splitter_app/screens/view_settlement_screen.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:hive/hive.dart';
 import '../data/services/member_service.dart';
 import 'add_bill_screen.dart';
 import 'ocr_screen.dart';
@@ -17,7 +17,7 @@ class GroupScreen extends StatefulWidget {
 
 class _GroupScreenState extends State<GroupScreen> {
   List<String> members = [];
-  List<Map> bills = [];
+  List<Map<String, dynamic>> bills = [];
   Map<String, double> balances = {};
 
   @override
@@ -35,14 +35,20 @@ class _GroupScreenState extends State<GroupScreen> {
   }
 
   Future<void> _loadBills() async {
-    final box = await Hive.openBox<Map>('bills_${widget.groupName}');
+    final snapshot = await FirebaseFirestore.instance
+        .collection('groups')
+        .doc(widget.groupName)
+        .collection('bills')
+        .get();
+
     setState(() {
-      bills = box.values.toList();
+      bills = snapshot.docs.map((doc) => doc.data()).toList();
     });
+
     _calculateBalances();
   }
 
-  void _calculateBalances() async {
+  Future<void> _calculateBalances() async {
     final Map<String, double> netBalance = {for (var m in members) m: 0.0};
 
     for (final bill in bills) {
@@ -67,13 +73,17 @@ class _GroupScreenState extends State<GroupScreen> {
       netBalance[payer] = (netBalance[payer] ?? 0) + totalPaid;
     }
 
-    // Include settlements
-    final settleBox =
-        await Hive.openBox<Map>('settlements_${widget.groupName}');
-    for (final s in settleBox.values) {
-      final from = s['from'] as String;
-      final to = s['to'] as String;
-      final amt = s['amount'] as double;
+    final settleSnapshot = await FirebaseFirestore.instance
+        .collection('groups')
+        .doc(widget.groupName)
+        .collection('settlements')
+        .get();
+
+    for (final s in settleSnapshot.docs) {
+      final data = s.data();
+      final from = data['from'];
+      final to = data['to'];
+      final amt = data['amount'] * 1.0;
 
       netBalance[from] = (netBalance[from] ?? 0) + amt;
       netBalance[to] = (netBalance[to] ?? 0) - amt;
@@ -160,7 +170,8 @@ class _GroupScreenState extends State<GroupScreen> {
   }
 
   Future<void> _deleteMember(int index) async {
-    await MemberService.deleteMember(widget.groupName, index);
+    final memberName = members[index];
+    await MemberService.deleteMember(widget.groupName, memberName);
     await _loadMembers();
   }
 
@@ -196,27 +207,26 @@ class _GroupScreenState extends State<GroupScreen> {
           Expanded(
             flex: 2,
             child: members.isEmpty
-                ? Center(child: Text('No members yet. Tap + to add one.'))
+                ? const Center(child: Text('No members yet. Tap + to add one.'))
                 : ListView.builder(
                     itemCount: members.length,
                     itemBuilder: (context, index) {
                       return ListTile(
                         title: Text(members[index]),
                         trailing: IconButton(
-                          icon: Icon(Icons.delete),
+                          icon: const Icon(Icons.delete),
                           onPressed: () => _deleteMember(index),
                         ),
                       );
                     },
                   ),
           ),
-          Divider(),
-          Text("Bills",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const Divider(),
+          const Text("Bills", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           Expanded(
             flex: 2,
             child: bills.isEmpty
-                ? Center(child: Text("No bills yet. Tap 🧾 to add one."))
+                ? const Center(child: Text("No bills yet. Tap 🧾 to add one."))
                 : ListView.builder(
                     itemCount: bills.length,
                     itemBuilder: (context, index) {
@@ -228,22 +238,21 @@ class _GroupScreenState extends State<GroupScreen> {
                       return ListTile(
                         title: Text(bill['title'] ?? 'Untitled'),
                         subtitle: Text("₹${total.toStringAsFixed(2)}"),
-                        trailing: Icon(Icons.receipt_long),
+                        trailing: const Icon(Icons.receipt_long),
                       );
                     },
                   ),
           ),
-          Divider(),
-          Text("Balances",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const Divider(),
+          const Text("Balances", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           Expanded(
             flex: 1,
             child: balances.isEmpty
-                ? Center(child: Text("No balances yet."))
+                ? const Center(child: Text("No balances yet."))
                 : ListView(
                     children: balances.entries.map((entry) {
                       final value = entry.value;
-                      final String status = value == 0
+                      final status = value == 0
                           ? "is settled up"
                           : value > 0
                               ? "is owed ₹${value.toStringAsFixed(2)}"
@@ -255,9 +264,8 @@ class _GroupScreenState extends State<GroupScreen> {
                     }).toList(),
                   ),
           ),
-          Divider(),
-          Text("Who Owes Whom",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const Divider(),
+          const Text("Who Owes Whom", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           Expanded(
             flex: 1,
             child: ListView(
@@ -270,7 +278,6 @@ class _GroupScreenState extends State<GroupScreen> {
       ),
       floatingActionButton: Column(
         mainAxisAlignment: MainAxisAlignment.end,
-        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           FloatingActionButton.extended(
             heroTag: 'view-settlements',
@@ -283,10 +290,10 @@ class _GroupScreenState extends State<GroupScreen> {
                 ),
               );
             },
-            icon: Icon(Icons.history),
-            label: Text("View Settlements"),
+            icon: const Icon(Icons.history),
+            label: const Text("View Settlements"),
           ),
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
           FloatingActionButton.extended(
             heroTag: 'settle',
             onPressed: () async {
@@ -303,16 +310,17 @@ class _GroupScreenState extends State<GroupScreen> {
                 await _loadBills();
               }
             },
-            icon: Icon(Icons.compare_arrows),
-            label: Text("Settle Up"),
+            icon: const Icon(Icons.compare_arrows),
+            label: const Text("Settle Up"),
           ),
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
           FloatingActionButton(
             heroTag: 'add-member',
             onPressed: _addMemberDialog,
             tooltip: 'Add Member',
-            child: Icon(Icons.person_add),
+            child: const Icon(Icons.person_add),
           ),
+          const SizedBox(height: 12),
           FloatingActionButton.extended(
             heroTag: 'ocr',
             onPressed: () {
@@ -326,10 +334,9 @@ class _GroupScreenState extends State<GroupScreen> {
                 ),
               );
             },
-            icon: Icon(Icons.camera),
-            label: Text("Scan Bill"),
+            icon: const Icon(Icons.camera),
+            label: const Text("Scan Bill"),
           ),
-          SizedBox(height: 12),
         ],
       ),
     );

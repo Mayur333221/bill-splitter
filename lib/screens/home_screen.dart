@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../state/app_state.dart';
@@ -48,9 +49,7 @@ class _HomeScreenState extends State<HomeScreen> {
         },
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          _showAddGroupDialog(context);
-        },
+        onPressed: () => _showAddGroupDialog(context),
         tooltip: 'Create Group',
         child: const Icon(Icons.add),
       ),
@@ -74,10 +73,18 @@ class _HomeScreenState extends State<HomeScreen> {
               child: const Text('Cancel'),
             ),
             ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
                 final name = controller.text.trim();
                 if (name.isNotEmpty) {
-                  Provider.of<AppState>(context, listen: false).addGroup(name);
+                  final appState = Provider.of<AppState>(context, listen: false);
+                  await FirebaseFirestore.instance
+                      .collection('groups')
+                      .doc(name)
+                      .set({
+                        'createdAt': FieldValue.serverTimestamp(),
+                        'members': [],
+                      });
+                  await appState.loadGroups();
                 }
                 Navigator.pop(dialogContext);
               },

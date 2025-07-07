@@ -1,5 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:hive/hive.dart';
 
 class AddBillScreen extends StatefulWidget {
   final String groupName;
@@ -31,29 +31,29 @@ class _AddBillScreenState extends State<AddBillScreen> {
   void _addItemDialog() {
     final nameController = TextEditingController();
     final amountController = TextEditingController();
-    final selected = <String>{...widget.members}; // All members selected by default
+    final selected = <String>{...widget.members};
 
     showDialog(
       context: context,
       builder: (_) {
         return StatefulBuilder(
           builder: (context, setModalState) => AlertDialog(
-            title: Text("Add Item"),
+            title: const Text("Add Item"),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   TextField(
                     controller: nameController,
-                    decoration: InputDecoration(labelText: "Item Name"),
+                    decoration: const InputDecoration(labelText: "Item Name"),
                   ),
                   TextField(
                     controller: amountController,
-                    decoration: InputDecoration(labelText: "Amount"),
+                    decoration: const InputDecoration(labelText: "Amount"),
                     keyboardType: TextInputType.number,
                   ),
-                  Divider(),
-                  Text("Split Between:"),
+                  const Divider(),
+                  const Text("Split Between:"),
                   ...widget.members.map((m) => CheckboxListTile(
                         title: Text(m),
                         value: selected.contains(m),
@@ -73,7 +73,7 @@ class _AddBillScreenState extends State<AddBillScreen> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: Text("Cancel"),
+                child: const Text("Cancel"),
               ),
               ElevatedButton(
                 onPressed: () {
@@ -93,10 +93,10 @@ class _AddBillScreenState extends State<AddBillScreen> {
                       "split": split,
                     };
 
-                    Navigator.pop(context, newItem); // return the item
+                    Navigator.pop(context, newItem);
                   }
                 },
-                child: Text("Add"),
+                child: const Text("Add"),
               )
             ],
           ),
@@ -111,7 +111,7 @@ class _AddBillScreenState extends State<AddBillScreen> {
     });
   }
 
-  void _saveBill() async {
+  Future<void> _saveBill() async {
     final title = billTitleController.text.trim();
     if (title.isEmpty || items.isEmpty || selectedPayer == null) return;
 
@@ -122,29 +122,33 @@ class _AddBillScreenState extends State<AddBillScreen> {
       "paidBy": selectedPayer
     };
 
-    final boxName = 'bills_${widget.groupName}';
-    final box = await Hive.openBox<Map>(boxName);
-    await box.add(bill);
+    final billsCollection = FirebaseFirestore.instance
+        .collection('groups')
+        .doc(widget.groupName)
+        .collection('bills');
 
-    Navigator.pop(context); // Go back to GroupScreen
+    await billsCollection.add(bill);
+
+    if (!mounted) return;
+    Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("New Bill")),
+      appBar: AppBar(title: const Text("New Bill")),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
             TextField(
               controller: billTitleController,
-              decoration: InputDecoration(labelText: "Bill Title"),
+              decoration: const InputDecoration(labelText: "Bill Title"),
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
               value: selectedPayer,
-              decoration: InputDecoration(labelText: "Paid By"),
+              decoration: const InputDecoration(labelText: "Paid By"),
               items: widget.members.map((member) {
                 return DropdownMenuItem(
                   value: member,
@@ -153,20 +157,20 @@ class _AddBillScreenState extends State<AddBillScreen> {
               }).toList(),
               onChanged: (value) {
                 setState(() {
-                  selectedPayer = value!;
+                  selectedPayer = value;
                 });
               },
             ),
             const SizedBox(height: 16),
             ElevatedButton.icon(
               onPressed: _addItemDialog,
-              icon: Icon(Icons.add),
-              label: Text("Add Item"),
+              icon: const Icon(Icons.add),
+              label: const Text("Add Item"),
             ),
             const SizedBox(height: 16),
             Expanded(
               child: items.isEmpty
-                  ? Center(child: Text("No items added yet"))
+                  ? const Center(child: Text("No items added yet"))
                   : ListView(
                       children: items
                           .map((item) => ListTile(
@@ -178,7 +182,7 @@ class _AddBillScreenState extends State<AddBillScreen> {
             ),
             ElevatedButton(
               onPressed: _saveBill,
-              child: Text("Save Bill"),
+              child: const Text("Save Bill"),
             )
           ],
         ),

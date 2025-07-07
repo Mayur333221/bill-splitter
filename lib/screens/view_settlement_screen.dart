@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:hive/hive.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 
 class ViewSettlementsScreen extends StatefulWidget {
@@ -12,7 +12,7 @@ class ViewSettlementsScreen extends StatefulWidget {
 }
 
 class _ViewSettlementsScreenState extends State<ViewSettlementsScreen> {
-  List<Map> settlements = [];
+  List<Map<String, dynamic>> settlements = [];
 
   @override
   void initState() {
@@ -21,9 +21,23 @@ class _ViewSettlementsScreenState extends State<ViewSettlementsScreen> {
   }
 
   Future<void> _loadSettlements() async {
-    final box = await Hive.openBox<Map>('settlements_${widget.groupName}');
+    final snapshot = await FirebaseFirestore.instance
+        .collection('groups')
+        .doc(widget.groupName)
+        .collection('settlements')
+        .orderBy('timestamp', descending: true)
+        .get();
+
     setState(() {
-      settlements = box.values.toList();
+      settlements = snapshot.docs
+          .map((doc) => {
+                'from': doc['from'],
+                'to': doc['to'],
+                'amount': doc['amount'],
+                'timestamp': (doc['timestamp'] as Timestamp?)?.millisecondsSinceEpoch ??
+                    DateTime.now().millisecondsSinceEpoch,
+              })
+          .toList();
     });
   }
 
@@ -35,23 +49,19 @@ class _ViewSettlementsScreenState extends State<ViewSettlementsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("All Settlements")),
+      appBar: AppBar(title: const Text("All Settlements")),
       body: settlements.isEmpty
-          ? Center(child: Text("No settlements yet."))
+          ? const Center(child: Text("No settlements yet."))
           : ListView.separated(
               itemCount: settlements.length,
-              separatorBuilder: (_, __) => Divider(),
+              separatorBuilder: (_, __) => const Divider(),
               itemBuilder: (context, index) {
                 final s = settlements[index];
-                final from = s['from'];
-                final to = s['to'];
-                final amount = s['amount'];
-                final date = _formatDate(s['timestamp']);
-
                 return ListTile(
-                  leading: Icon(Icons.payment),
-                  title: Text("$from paid $to ₹${amount.toStringAsFixed(2)}"),
-                  subtitle: Text(date),
+                  leading: const Icon(Icons.payment),
+                  title:
+                      Text("${s['from']} paid ${s['to']} ₹${s['amount'].toStringAsFixed(2)}"),
+                  subtitle: Text(_formatDate(s['timestamp'])),
                 );
               },
             ),

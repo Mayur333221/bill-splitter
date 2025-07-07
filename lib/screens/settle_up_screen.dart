@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:hive/hive.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class SettleUpScreen extends StatefulWidget {
   final String groupName;
@@ -20,50 +20,59 @@ class _SettleUpScreenState extends State<SettleUpScreen> {
   String? receiver;
   final amountController = TextEditingController();
 
-  void _submitSettlement() async {
+  Future<void> _submitSettlement() async {
     final amt = double.tryParse(amountController.text.trim()) ?? 0;
     if (payer == null || receiver == null || amt <= 0 || payer == receiver) return;
 
-    final box = await Hive.openBox<Map>('settlements_${widget.groupName}');
-    await box.add({
+    final settlement = {
       'from': payer,
       'to': receiver,
       'amount': amt,
-      'timestamp': DateTime.now().millisecondsSinceEpoch,
-    });
+      'timestamp': FieldValue.serverTimestamp(),
+    };
 
-    Navigator.pop(context, true); // return success
+    await FirebaseFirestore.instance
+        .collection('groups')
+        .doc(widget.groupName)
+        .collection('settlements')
+        .add(settlement);
+
+    Navigator.pop(context, true); // Indicate success
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Settle Up")),
+      appBar: AppBar(title: const Text("Settle Up")),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
             DropdownButtonFormField<String>(
               value: payer,
-              decoration: InputDecoration(labelText: "Paid By"),
-              items: widget.members.map((m) => DropdownMenuItem(value: m, child: Text(m))).toList(),
+              decoration: const InputDecoration(labelText: "Paid By"),
+              items: widget.members
+                  .map((m) => DropdownMenuItem(value: m, child: Text(m)))
+                  .toList(),
               onChanged: (v) => setState(() => payer = v),
             ),
             DropdownButtonFormField<String>(
               value: receiver,
-              decoration: InputDecoration(labelText: "Paid To"),
-              items: widget.members.map((m) => DropdownMenuItem(value: m, child: Text(m))).toList(),
+              decoration: const InputDecoration(labelText: "Paid To"),
+              items: widget.members
+                  .map((m) => DropdownMenuItem(value: m, child: Text(m)))
+                  .toList(),
               onChanged: (v) => setState(() => receiver = v),
             ),
             TextField(
               controller: amountController,
-              decoration: InputDecoration(labelText: "Amount"),
+              decoration: const InputDecoration(labelText: "Amount"),
               keyboardType: TextInputType.number,
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             ElevatedButton(
               onPressed: _submitSettlement,
-              child: Text("Save Settlement"),
+              child: const Text("Save Settlement"),
             )
           ],
         ),

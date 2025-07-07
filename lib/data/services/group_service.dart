@@ -23,50 +23,48 @@ class _GroupScreenState extends State<GroupScreen> {
     members = await MemberService.getMembers(widget.groupName);
     setState(() {});
   }
-Future<void> _addMemberDialog() async {
-  final controller = TextEditingController();
-  String? memberName;
 
-  await showDialog(
-    context: context,
-    builder: (context) {
-      return AlertDialog(
-        title: const Text('Add Member'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(hintText: 'Member Name'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final name = controller.text.trim();
-              if (name.isNotEmpty) {
-                memberName = name;
-              }
-              Navigator.pop(context); // Pop FIRST, no async after this
-            },
-            child: const Text('Add'),
-          ),
-        ],
-      );
-    },
-  );
+  Future<void> _addMemberDialog() async {
+    final controller = TextEditingController();
+    String? memberName;
 
-  // AFTER dialog is dismissed, do async work
-  if (memberName != null) {
-    await MemberService.addMember(widget.groupName, memberName!);
-    await _loadMembers();
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Add Member'),
+          content: TextField(
+            controller: controller,
+            decoration: const InputDecoration(hintText: 'Member Name'),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final name = controller.text.trim();
+                if (name.isNotEmpty) {
+                  memberName = name;
+                }
+                Navigator.pop(context); // Always pop first
+              },
+              child: const Text('Add'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (memberName != null) {
+      await MemberService.addMember(widget.groupName, memberName!);
+      await _loadMembers();
+    }
   }
-}
 
-
-
-  Future<void> _deleteMember(int index) async {
-    await MemberService.deleteMember(widget.groupName, index);
+  Future<void> _deleteMember(String memberName) async {
+    await MemberService.deleteMember(widget.groupName, memberName);
     await _loadMembers();
   }
 
@@ -83,7 +81,7 @@ Future<void> _addMemberDialog() async {
                   title: Text(members[index]),
                   trailing: IconButton(
                     icon: const Icon(Icons.delete),
-                    onPressed: () => _deleteMember(index),
+                    onPressed: () => _deleteMember(members[index]),
                   ),
                 );
               },
@@ -91,7 +89,7 @@ Future<void> _addMemberDialog() async {
       floatingActionButton: FloatingActionButton(
         onPressed: _addMemberDialog,
         tooltip: 'Add Member',
-        child: const Icon(Icons.person_add)
+        child: const Icon(Icons.person_add),
       ),
     );
   }

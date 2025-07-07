@@ -1,20 +1,32 @@
-import 'package:hive/hive.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class MemberService {
-  static String boxName(String groupName) => 'members_$groupName';
+  static final _firestore = FirebaseFirestore.instance;
 
   static Future<List<String>> getMembers(String groupName) async {
-    final box = await Hive.openBox<String>(boxName(groupName));
-    return box.values.toList();
+    final snapshot = await _firestore.collection('groups').doc(groupName).get();
+    final data = snapshot.data();
+    if (data != null && data['members'] is List) {
+      return List<String>.from(data['members']);
+    }
+    return [];
   }
 
   static Future<void> addMember(String groupName, String memberName) async {
-    final box = await Hive.openBox<String>(boxName(groupName));
-    await box.add(memberName);
+    final members = await getMembers(groupName);
+    if (!members.contains(memberName)) {
+      members.add(memberName);
+      await _firestore.collection('groups').doc(groupName).update({
+        'members': members,
+      });
+    }
   }
 
-  static Future<void> deleteMember(String groupName, int index) async {
-    final box = await Hive.openBox<String>(boxName(groupName));
-    await box.deleteAt(index);
+  static Future<void> deleteMember(String groupName, String memberName) async {
+    final members = await getMembers(groupName);
+    members.remove(memberName);
+    await _firestore.collection('groups').doc(groupName).update({
+      'members': members,
+    });
   }
 }

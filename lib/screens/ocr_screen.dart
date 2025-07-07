@@ -1,8 +1,8 @@
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
-import 'package:hive/hive.dart';
 
 class OCRScreen extends StatefulWidget {
   final String groupName;
@@ -15,26 +15,36 @@ class OCRScreen extends StatefulWidget {
 }
 
 class _OCRScreenState extends State<OCRScreen> {
-  File? _image;
+  Uint8List? _imageBytes;
   List<Map<String, dynamic>> extractedItems = [];
 
   Future<void> _pickImage(ImageSource source) async {
     final picker = ImagePicker();
     final picked = await picker.pickImage(source: source);
     if (picked != null) {
-      final imageFile = File(picked.path);
+      final bytes = await picked.readAsBytes();
       setState(() {
-        _image = imageFile;
+        _imageBytes = bytes;
         extractedItems = [];
       });
-      await _runOCR(imageFile);
+      await _runOCR(bytes);
     }
   }
 
-  Future<void> _runOCR(File image) async {
-    final inputImage = InputImage.fromFile(image);
+  Future<void> _runOCR(Uint8List bytes) async {
+    final inputImage = InputImage.fromBytes(
+      bytes: bytes,
+      metadata: InputImageMetadata(
+        size: const Size(1000, 1000), // Replace with actual if known
+        rotation: InputImageRotation.rotation0deg,
+        format: InputImageFormat.bgra8888,
+        bytesPerRow: 1000,
+      ),
+    );
+
     final recognizer = TextRecognizer(script: TextRecognitionScript.latin);
     final result = await recognizer.processImage(inputImage);
+    recognizer.close();
 
     final items = <Map<String, dynamic>>[];
 
@@ -57,7 +67,6 @@ class _OCRScreenState extends State<OCRScreen> {
       }
     }
 
-    recognizer.close();
     setState(() {
       extractedItems = items;
     });
@@ -72,27 +81,27 @@ class _OCRScreenState extends State<OCRScreen> {
     await showDialog(
       context: context,
       builder: (_) => StatefulBuilder(
-        builder: (context, setStateDialog) => AlertDialog(
-          title: Text("Edit Item"),
+        builder: (context, setModalState) => AlertDialog(
+          title: const Text("Edit Item"),
           content: SingleChildScrollView(
             child: Column(
               children: [
                 TextField(
                   controller: nameController,
-                  decoration: InputDecoration(labelText: "Item Name"),
+                  decoration: const InputDecoration(labelText: "Item Name"),
                 ),
                 TextField(
                   controller: amountController,
-                  decoration: InputDecoration(labelText: "Amount"),
+                  decoration: const InputDecoration(labelText: "Amount"),
                   keyboardType: TextInputType.number,
                 ),
-                Divider(),
-                Text("Split Between:"),
+                const Divider(),
+                const Text("Split Between:"),
                 ...widget.members.map((m) => CheckboxListTile(
                       title: Text(m),
                       value: selected.contains(m),
                       onChanged: (val) {
-                        setStateDialog(() {
+                        setModalState(() {
                           if (val == true) {
                             selected.add(m);
                           } else {
@@ -105,7 +114,10 @@ class _OCRScreenState extends State<OCRScreen> {
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: Text("Cancel")),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Cancel"),
+            ),
             ElevatedButton(
               onPressed: () {
                 final name = nameController.text.trim();
@@ -127,7 +139,7 @@ class _OCRScreenState extends State<OCRScreen> {
                   Navigator.pop(context);
                 }
               },
-              child: Text("Save"),
+              child: const Text("Save"),
             )
           ],
         ),
@@ -138,12 +150,15 @@ class _OCRScreenState extends State<OCRScreen> {
   Future<void> _saveBill() async {
     if (extractedItems.isEmpty) return;
 
-    final box = await Hive.openBox<Map>('bills_${widget.groupName}');
-    await box.add({
+    await FirebaseFirestore.instance
+        .collection('groups')
+        .doc(widget.groupName)
+        .collection('bills')
+        .add({
       "title": "Scanned Bill",
       "items": extractedItems,
       "paidBy": widget.members.first,
-      "date": DateTime.now().millisecondsSinceEpoch
+      "date": DateTime.now().millisecondsSinceEpoch,
     });
 
     Navigator.pop(context);
@@ -152,33 +167,33 @@ class _OCRScreenState extends State<OCRScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Scan & Extract Bill")),
+      appBar: AppBar(title: const Text("Scan & Extract Bill")),
       body: Column(
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               ElevatedButton.icon(
-                icon: Icon(Icons.camera_alt),
-                label: Text("Camera"),
+                icon: const Icon(Icons.camera_alt),
+                label: const Text("Camera"),
                 onPressed: () => _pickImage(ImageSource.camera),
               ),
               ElevatedButton.icon(
-                icon: Icon(Icons.photo),
-                label: Text("Gallery"),
+                icon: const Icon(Icons.photo),
+                label: const Text("Gallery"),
                 onPressed: () => _pickImage(ImageSource.gallery),
               ),
             ],
           ),
-          if (_image != null)
+          if (_imageBytes != null)
             Padding(
               padding: const EdgeInsets.all(8.0),
-              child: Image.file(_image!, height: 150),
+              child: Image.memory(_imageBytes!, height: 150),
             ),
-          Divider(),
+          const Divider(),
           Expanded(
             child: extractedItems.isEmpty
-                ? Center(child: Text("No items detected yet."))
+                ? const Center(child: Text("No items detected yet."))
                 : ListView.builder(
                     itemCount: extractedItems.length,
                     itemBuilder: (context, index) {
@@ -188,7 +203,7 @@ class _OCRScreenState extends State<OCRScreen> {
                         title: Text("${item['name']} - ₹${item['amount']}"),
                         subtitle: Text("Split: $members"),
                         trailing: IconButton(
-                          icon: Icon(Icons.edit),
+                          icon: const Icon(Icons.edit),
                           onPressed: () => _editItem(index),
                         ),
                       );
@@ -199,8 +214,8 @@ class _OCRScreenState extends State<OCRScreen> {
             Padding(
               padding: const EdgeInsets.all(12),
               child: ElevatedButton.icon(
-                icon: Icon(Icons.save),
-                label: Text("Save Bill"),
+                icon: const Icon(Icons.save),
+                label: const Text("Save Bill"),
                 onPressed: _saveBill,
               ),
             ),

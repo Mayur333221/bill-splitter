@@ -32,12 +32,30 @@
   <title>bill_splitter_app</title>
   <link rel="manifest" href="manifest.json">
 
+
+<script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js"></script>
+
+<script>
+ const firebaseConfig = {
+    apiKey: "AIzaSyBNKmiL9yUpXHMOsFtSldKiXEGHQuRb1r8",
+    authDomain: "bill-splitter-d1e6f.firebaseapp.com",
+    projectId: "bill-splitter-d1e6f",
+    storageBucket: "bill-splitter-d1e6f.firebasestorage.app",
+    messagingSenderId: "594194925592",
+    appId: "1:594194925592:web:2a24c4c2e667b3aa08db6d",
+    measurementId: "G-SYDJE41B1H"
+  };
+
+  // Initialize Firebase
+  firebase.initializeApp(firebaseConfig);
+</script>
+
   <script>
     // The value below is injected by flutter build, do not touch.
     var serviceWorkerVersion = null;
   </script>
   <!-- This script adds the flutter initialization JS code -->
-  <script src="flutter.js" defer></script>
 </head>
 <body>
   <script>
