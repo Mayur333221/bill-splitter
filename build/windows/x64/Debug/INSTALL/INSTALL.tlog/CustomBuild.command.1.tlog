@@ -1,0 +1,10 @@
+^C:\PROJECTS\BILL SPLITTER\BILL_SPLITTER_APP\BUILD\WINDOWS\CMAKEFILES\DCE29520DC4519BD24127AEE076EB6C7\INSTALL_FORCE.RULE
+setlocal
+cd .
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

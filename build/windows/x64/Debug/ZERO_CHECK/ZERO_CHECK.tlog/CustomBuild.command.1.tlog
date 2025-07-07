@@ -1,0 +1,10 @@
+^C:\PROJECTS\BILL SPLITTER\BILL_SPLITTER_APP\BUILD\WINDOWS\CMAKEFILES\DCE29520DC4519BD24127AEE076EB6C7\GENERATE.STAMP.RULE
+setlocal
+"C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" "-SC:/Projects/Bill Splitter/bill_splitter_app/windows" "-BC:/Projects/Bill Splitter/bill_splitter_app/build/windows" --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file "C:/Projects/Bill Splitter/bill_splitter_app/build/windows/bill_splitter_app.sln"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

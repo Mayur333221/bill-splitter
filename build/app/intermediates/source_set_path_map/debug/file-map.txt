@@ -1,0 +1,30 @@
+com.example.bill_splitter_app-debug-0 C:\Projects\Bill Splitter\bill_splitter_app\android\app\src\debug\res
+com.example.bill_splitter_app-main-1 C:\Projects\Bill Splitter\bill_splitter_app\android\app\src\main\res
+com.example.bill_splitter_app-pngs-2 C:\Projects\Bill Splitter\bill_splitter_app\build\app\generated\res\pngs\debug
+com.example.bill_splitter_app-resValues-3 C:\Projects\Bill Splitter\bill_splitter_app\build\app\generated\res\resValues\debug
+com.example.bill_splitter_app-rs-4 C:\Projects\Bill Splitter\bill_splitter_app\build\app\generated\res\rs\debug
+com.example.bill_splitter_app-mergeDebugResources-5 C:\Projects\Bill Splitter\bill_splitter_app\build\app\intermediates\incremental\debug\mergeDebugResources\merged.dir
+com.example.bill_splitter_app-mergeDebugResources-6 C:\Projects\Bill Splitter\bill_splitter_app\build\app\intermediates\incremental\debug\mergeDebugResources\stripped.dir
+com.example.bill_splitter_app-merged_res-7 C:\Projects\Bill Splitter\bill_splitter_app\build\app\intermediates\merged_res\debug
+com.example.bill_splitter_app-packaged_res-8 C:\Projects\Bill Splitter\bill_splitter_app\build\flutter_plugin_android_lifecycle\intermediates\packaged_res\debug
+com.example.bill_splitter_app-packaged_res-9 C:\Projects\Bill Splitter\bill_splitter_app\build\google_mlkit_commons\intermediates\packaged_res\debug
+com.example.bill_splitter_app-packaged_res-10 C:\Projects\Bill Splitter\bill_splitter_app\build\google_mlkit_text_recognition\intermediates\packaged_res\debug
+com.example.bill_splitter_app-packaged_res-11 C:\Projects\Bill Splitter\bill_splitter_app\build\image_picker_android\intermediates\packaged_res\debug
+com.example.bill_splitter_app-packaged_res-12 C:\Projects\Bill Splitter\bill_splitter_app\build\path_provider_android\intermediates\packaged_res\debug
+com.example.bill_splitter_app-jetified-lifecycle-viewmodel-savedstate-2.6.1-13 C:\Users\mayur.madhekar\.gradle\caches\transforms-3\0d71402e87d63dfcdd1e8a19179a5833\transformed\jetified-lifecycle-viewmodel-savedstate-2.6.1\res
+com.example.bill_splitter_app-jetified-window-1.0.0-beta04-14 C:\Users\mayur.madhekar\.gradle\caches\transforms-3\25cee5f028ac2a6b79fd6278ff5b59e2\transformed\jetified-window-1.0.0-beta04\res
+com.example.bill_splitter_app-lifecycle-livedata-2.6.1-15 C:\Users\mayur.madhekar\.gradle\caches\transforms-3\4a950aaebf1aaad1fe6a2fdd6201e69a\transformed\lifecycle-livedata-2.6.1\res
+com.example.bill_splitter_app-jetified-play-services-basement-18.1.0-16 C:\Users\mayur.madhekar\.gradle\caches\transforms-3\58aa1384bde170d075503b845cfcf44c\transformed\jetified-play-services-basement-18.1.0\res
+com.example.bill_splitter_app-jetified-profileinstaller-1.3.0-17 C:\Users\mayur.madhekar\.gradle\caches\transforms-3\635b1770925726da461e843c0a3c6641\transformed\jetified-profileinstaller-1.3.0\res
+com.example.bill_splitter_app-jetified-core-ktx-1.10.1-18 C:\Users\mayur.madhekar\.gradle\caches\transforms-3\719af8deb3ed6174d87dbb6013e12a44\transformed\jetified-core-ktx-1.10.1\res
+com.example.bill_splitter_app-jetified-play-services-base-18.1.0-19 C:\Users\mayur.madhekar\.gradle\caches\transforms-3\781e5567158e59d38ee2b89930f9808b\transformed\jetified-play-services-base-18.1.0\res
+com.example.bill_splitter_app-jetified-savedstate-1.2.1-20 C:\Users\mayur.madhekar\.gradle\caches\transforms-3\8d45f58db1b5efd11956cf5f8829d6d3\transformed\jetified-savedstate-1.2.1\res
+com.example.bill_splitter_app-jetified-annotation-experimental-1.3.0-21 C:\Users\mayur.madhekar\.gradle\caches\transforms-3\937d6edc8055f6701a18eeac1a67afe6\transformed\jetified-annotation-experimental-1.3.0\res
+com.example.bill_splitter_app-jetified-activity-1.7.2-22 C:\Users\mayur.madhekar\.gradle\caches\transforms-3\a82db410cebe27c9879106e746eca4ec\transformed\jetified-activity-1.7.2\res
+com.example.bill_splitter_app-jetified-window-java-1.0.0-beta04-23 C:\Users\mayur.madhekar\.gradle\caches\transforms-3\ae81e06d24c799147c26814497a2a305\transformed\jetified-window-java-1.0.0-beta04\res
+com.example.bill_splitter_app-core-1.10.1-24 C:\Users\mayur.madhekar\.gradle\caches\transforms-3\c4988ff80110f75080a936fc6f044848\transformed\core-1.10.1\res
+com.example.bill_splitter_app-jetified-startup-runtime-1.1.1-25 C:\Users\mayur.madhekar\.gradle\caches\transforms-3\d2a7f03e118140f639e8945afb58cddb\transformed\jetified-startup-runtime-1.1.1\res
+com.example.bill_splitter_app-lifecycle-viewmodel-2.6.1-26 C:\Users\mayur.madhekar\.gradle\caches\transforms-3\d5cb841d085c8da3ed38e468f997390f\transformed\lifecycle-viewmodel-2.6.1\res
+com.example.bill_splitter_app-core-runtime-2.2.0-27 C:\Users\mayur.madhekar\.gradle\caches\transforms-3\db3ce0e4102f75753fdc0e9c2753a822\transformed\core-runtime-2.2.0\res
+com.example.bill_splitter_app-lifecycle-runtime-2.6.1-28 C:\Users\mayur.madhekar\.gradle\caches\transforms-3\e97fce397db1acf9b6f475dedfc7d654\transformed\lifecycle-runtime-2.6.1\res
+com.example.bill_splitter_app-lifecycle-livedata-core-2.6.1-29 C:\Users\mayur.madhekar\.gradle\caches\transforms-3\eed11806d4af25229ebcb855da7e9479\transformed\lifecycle-livedata-core-2.6.1\res
